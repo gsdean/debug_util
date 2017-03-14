@@ -9,9 +9,9 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Greg Dean"]
   spec.email         = ["dean.greg@gmail.com"]
 
-  spec.summary       = %q{TODO: Write a short summary, because Rubygems requires one.}
-  spec.description   = %q{TODO: Write a longer description or delete this line.}
-  spec.homepage      = "TODO: Put your gem's website or public repo URL here."
+  spec.summary       = %q{Some useful debug utilities}
+  spec.description   = %q{Some useful debug utilities}
+  spec.homepage      = "https://github.com/gsdean/debug_util"
   spec.license       = "MIT"
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
