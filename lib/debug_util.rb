@@ -19,10 +19,12 @@ module DebugUtil
     end
   end
 
-  def self.csv(o, name = nil)
-    CSV.open(name || 'debug.csv', 'wb') do |csv|
+  def self.csv(o, name = 'debug.csv', file_opts = 'wb')
+    CSV.open(name, file_opts) do |csv|
       o.each do |row|
+        row = block_given? ? yield(row) : row
         csv << (row.is_a?(Array) ? row : [row])
+        csv.flush
       end
     end
   end
