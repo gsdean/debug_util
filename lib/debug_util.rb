@@ -1,4 +1,5 @@
 require "debug_util/version"
+require 'csv'
 
 module DebugUtil
   def self.rescue
