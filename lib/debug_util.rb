@@ -1,5 +1,6 @@
 require "debug_util/version"
 require 'csv'
+require 'objspace'
 
 module DebugUtil
   def self.rescue
@@ -69,5 +70,74 @@ module DebugUtil
     end
     `dot -Tpng #{profile_dot} > #{path}/profile.png 2> /dev/null`
     result
+  end
+
+  UNIT_PREFIXES = {
+      0 => 'B',
+      3 => 'kB',
+      6 => 'MB',
+      9 => 'GB',
+      12 => 'TB',
+      15 => 'PB',
+      18 => 'EB',
+      21 => 'ZB',
+      24 => 'YB'
+  }.freeze
+
+  def self.scale_bytes(bytes)
+    return "0 B" if bytes.zero?
+
+    scale = Math.log10(bytes.abs).div(3) * 3
+    scale = 24 if scale > 24
+    "%.2f#{UNIT_PREFIXES[scale]}" % (bytes / 10.0**scale)
+  end
+
+  class Snapshot
+    attr_reader :instances, :bytes
+
+    def initialize(instances = Hash.new { 0 }, bytes = Hash.new { 0 })
+      @instances = instances
+      @bytes = bytes
+    end
+
+    def self.take
+      ObjectSpace.trace_object_allocations_start
+      bytes = Hash.new { 0 }
+      instances = Hash.new { 0 }
+      ObjectSpace.each_object do |o|
+        next if ObjectSpace.allocation_method_id(o) != nil
+
+        instances[o.class] += 1
+        bytes[o.class] += ObjectSpace.memsize_of(o)
+      end
+
+      Snapshot.new(instances, bytes)
+    ensure
+      ObjectSpace.trace_object_allocations_stop
+    end
+  end
+
+  def self.memory
+    Snapshot.take
+  end
+
+  def self.leaks(frequency: 30)
+    Thread.start do
+      previous = Snapshot.new
+      loop do
+        current = Snapshot.take
+
+        current.bytes.sort{|(k1,v1), (k2, v2)| v2 <=> v1}.take(50).each do |k, v|
+          delta_bytes = v - previous.bytes[k].to_i
+          delta_instances = current.instances[k].to_i - previous.instances[k].to_i
+          puts "#{k}, #{scale_bytes(v)} (#{scale_bytes(delta_bytes)} #{delta_instances})"
+        end
+
+        previous = current
+        sleep(frequency)
+      end
+    end
+
+    yield
   end
 end
