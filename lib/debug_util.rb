@@ -93,51 +93,45 @@ module DebugUtil
   end
 
   class Snapshot
-    attr_reader :instances, :bytes
+    attr_reader :instances, :bytes, :total
 
-    def initialize(instances = Hash.new { 0 }, bytes = Hash.new { 0 })
-      @instances = instances
-      @bytes = bytes
-    end
+    def initialize
+      @bytes = Hash.new { 0 }
+      @instances = Hash.new { 0 }
 
-    def self.take
-      ObjectSpace.trace_object_allocations_start
-      bytes = Hash.new { 0 }
-      instances = Hash.new { 0 }
       ObjectSpace.each_object do |o|
-        next if ObjectSpace.allocation_method_id(o) != nil
-
         instances[o.class] += 1
         bytes[o.class] += ObjectSpace.memsize_of(o)
       end
 
-      Snapshot.new(instances, bytes)
-    ensure
-      ObjectSpace.trace_object_allocations_stop
+      @total = ObjectSpace.memsize_of_all
     end
   end
 
-  def self.memory
-    Snapshot.take
+  def self.heap
+    Snapshot.new
   end
 
-  def self.leaks(frequency: 30)
+  def self.sample_heap(frequency: 30)
     Thread.start do
-      previous = Snapshot.new
+      previous = heap
       loop do
-        current = Snapshot.take
+        current = heap
 
-        current.bytes.sort{|(k1,v1), (k2, v2)| v2 <=> v1}.take(50).each do |k, v|
-          delta_bytes = v - previous.bytes[k].to_i
-          delta_instances = current.instances[k].to_i - previous.instances[k].to_i
-          puts "#{k}, #{scale_bytes(v)} (#{scale_bytes(delta_bytes)} #{delta_instances})"
+        system("clear")
+
+        puts "100%, *, #{scale_bytes(current.total)}, #{scale_bytes(current.total - previous.total)}"
+        current.bytes.sort{|(k1,v1), (k2, v2)| v2 <=> v1}.take(50).each do |k, bytes|
+          instances = current.instances[k].to_i
+          delta_bytes = bytes - previous.bytes[k].to_i
+          delta_instances = instances - previous.instances[k].to_i
+          percent = (bytes / current.total.to_f * 100).round(2)
+          puts "#{percent}%, #{k}, #{scale_bytes(bytes)} #{instances} (#{scale_bytes(delta_bytes)} #{delta_instances})"
         end
 
         previous = current
         sleep(frequency)
       end
     end
-
-    yield
   end
 end

@@ -9,13 +9,18 @@ class DebugUtilTest < Minitest::Test
     assert false
   end
 
-  def test_memory
-    before = DebugUtil.memory
+  def test_heap
+    before = DebugUtil.heap
     10.times { Array.new(100, 1) }
-    after = DebugUtil.memory
-    after2 = DebugUtil.memory
+    after = DebugUtil.heap
+    after2 = DebugUtil.heap
     puts before
     puts after
     puts after2
+  end
+
+  def test_sample_heap
+    DebugUtil.sample_heap(frequency: 1)
+    sleep(5)
   end
 end
